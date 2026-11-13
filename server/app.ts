@@ -1,5 +1,5 @@
 import express, { type ErrorRequestHandler } from "express";
-import { MongoServerError } from "mongodb";
+import { MongoNetworkError, MongoServerError, MongoServerSelectionError } from "mongodb";
 import { ZodError } from "zod";
 import { config } from "./config";
 import { database } from "./db/client";
@@ -7,6 +7,7 @@ import { definitions } from "./db/collections";
 import { ApiError } from "./lib/errors";
 import { collectionsRouter } from "./routes/collections";
 import { documentsRouter } from "./routes/documents";
+import { krugRouter } from "./routes/krug";
 
 export const app = express();
 app.disable("x-powered-by");
@@ -19,7 +20,7 @@ app.use((request, response, next) => {
   }
   if (["POST", "PUT", "PATCH", "DELETE"].includes(request.method)) {
     if (
-      request.get("x-db-client") !== "vibe-farpost" ||
+      (request.path.startsWith("/api/krug") ? request.get("x-krug-client") !== "krug" : request.get("x-db-client") !== "vibe-farpost") ||
       (request.method !== "DELETE" && !request.is("application/json"))
     ) {
       return next(
@@ -49,7 +50,7 @@ app.use(express.json({ limit: "1mb" }));
 app.get("/api/db/health", async (_request, response) => {
   await database.command({ ping: 1 });
   const collections = await definitions
-    .find({}, { projection: { name: 1 } })
+    .find({ name: { $not: /^krug_/ } }, { projection: { name: 1 } })
     .toArray();
   const counts = await Promise.all(
     collections.map(({ name }) => database.collection(name).countDocuments()),
@@ -62,6 +63,7 @@ app.get("/api/db/health", async (_request, response) => {
   });
 });
 
+app.use("/api/krug", krugRouter);
 app.use("/api/db/collections/:name/documents", documentsRouter);
 app.use("/api/db/collections", collectionsRouter);
 app.use((_request, _response, next) =>
@@ -96,15 +98,17 @@ const errorHandler: ErrorRequestHandler = (
     error.type === "entity.too.large"
   ) {
     response.status(413).json({ error: "Размер запроса превышает 1 МБ." });
+  } else if (error instanceof MongoNetworkError || error instanceof MongoServerSelectionError) {
+    response.status(503).json({ error: "База временно недоступна. Проверьте запуск MongoDB." });
   } else {
     console.error(
       "Database API error:",
       error instanceof Error ? error.message : "Unknown error",
     );
     response
-      .status(503)
+      .status(500)
       .json({
-        error: "База временно недоступна. Проверьте, что MongoDB запущена.",
+        error: "Не удалось выполнить действие. Попробуйте ещё раз.",
       });
   }
 };

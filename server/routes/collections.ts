@@ -4,12 +4,13 @@ import { database } from "../db/client";
 import { definitions } from "../db/collections";
 import { ApiError } from "../lib/errors";
 import { collectionDefinition, collectionName } from "../lib/validation";
+import { ensureStudioCollection } from "../lib/studio-access";
 
 export const collectionsRouter = Router();
 
 collectionsRouter.get("/", async (_request, response) => {
   const items = await definitions
-    .find({}, { projection: { _id: 0 } })
+    .find({ name: { $not: /^krug_/ } }, { projection: { _id: 0 } })
     .sort({ name: 1 })
     .toArray();
   const collections = await Promise.all(
@@ -23,6 +24,7 @@ collectionsRouter.get("/", async (_request, response) => {
 
 collectionsRouter.post("/", async (request, response) => {
   const definition = collectionDefinition.parse(request.body);
+  ensureStudioCollection(definition.name);
   if (await definitions.findOne({ name: definition.name })) {
     throw new ApiError(409, "Коллекция с таким именем уже существует.");
   }
@@ -35,6 +37,7 @@ collectionsRouter.post("/", async (request, response) => {
 
 collectionsRouter.put("/:name", async (request, response) => {
   const name = collectionName.parse(request.params.name);
+  ensureStudioCollection(name);
   const definition = collectionDefinition.parse(request.body);
   if (definition.name !== name)
     throw new ApiError(400, "Системное имя коллекции изменить нельзя.");

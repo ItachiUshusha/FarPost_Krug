@@ -1,0 +1,4 @@
+interface:
+  display_name: "Круг · Material Design"
+  short_description: "Framework7 для мобилки, Material UI для десктопа"
+  default_prompt: "Используй $krug-material-design для «Круга»: Framework7 React с Material-темой на мобильных экранах, Material UI на десктопе и общие дизайн-токены."

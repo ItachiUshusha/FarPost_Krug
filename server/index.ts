@@ -2,6 +2,8 @@ import { app } from "./app";
 import { config } from "./config";
 import { connectDatabase, mongoClient } from "./db/client";
 import { initializeDatabase } from "./db/collections";
+import { initializeKrug } from "./repositories/krug";
+import { seedDemo } from "./services/krug";
 
 async function start() {
   // MongoDB and the API may be launched by the same command.
@@ -9,6 +11,8 @@ async function start() {
     try {
       await connectDatabase();
       await initializeDatabase();
+      await initializeKrug();
+      if (config.demoMode) await seedDemo();
       break;
     } catch (error) {
       if (attempt >= 5) throw error;

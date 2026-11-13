@@ -10,6 +10,7 @@ import {
   validateValues,
 } from "../lib/validation";
 import { pagination } from "./collections";
+import { ensureStudioCollection } from "../lib/studio-access";
 
 export const documentsRouter = Router({ mergeParams: true });
 
@@ -32,6 +33,7 @@ function serialize(document: Document, fields: string[]): DocumentRecord {
 
 documentsRouter.use(async (request, response, next) => {
   const name = collectionName.parse(request.params.name);
+  ensureStudioCollection(name);
   const definition = await definitions.findOne({ name });
   if (!definition) throw new ApiError(404, "Коллекция не найдена.");
   response.locals.definition = definition;

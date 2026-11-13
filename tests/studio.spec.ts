@@ -31,7 +31,7 @@ test("create a form, save and edit a record, extend the schema and delete the re
   const browserErrors: string[] = [];
   page.on("pageerror", (error) => browserErrors.push(error.message));
   await mkdir(".local/qa", { recursive: true });
-  await page.goto("/");
+  await page.goto("/studio");
   await expect(
     page.getByText("MongoDB подключена", { exact: true }),
   ).toBeVisible();
